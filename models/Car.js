@@ -18,7 +18,6 @@ mongoose.connection.on('open', () => {
 // define data model as JSON key/value pairs
 // values indicate the data type of each key
 const carsSchema = new Schema({
- title: { type: String, required: true },
  name: String,
  make: String,
  model:String,
