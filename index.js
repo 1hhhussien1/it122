@@ -24,7 +24,65 @@ app.get('/about', (req,res) => {
   console.log(req.url)
   res.send('This class is about making great web sites');
 });
+app.get('/api/cars', async (req, res) => {
+try {
+const cars = await Car.find();
+res.json(cars);
+} catch (error) {
+res.status(500).json({ error: 'Internal server error' });
+}
+});
 
+//get a single car by model
+app.get('/api/car/:model', async (req, res) => {
+try {
+const car = await Car.findOne({ "model": req.params.model });
+if (!car) {
+res.status(404).json({ error: 'Car not found' });
+} else {
+res.json(car);
+}
+} catch (error) {
+
+res.status(500).json({ error: 'Internal server error' });
+}
+});
+
+// add or update a car
+app.post('/api/car', async (req, res) => {
+try {
+const { id, name, make, model, year } = req.body;
+if (model) {
+// update existing car
+
+const updatedCar = await Car.findByModelAndUpdate(model, { id, name, make, model, year }, { new: true });
+res.json(updatedCar);
+} else {
+// add new Car
+
+const newCar = new Car({ id, name, make, model, year });
+const savedCar = await newCar.save();
+res.json(savedCar);
+}
+} catch (error) {
+res.status(500).json({ error: 'Internal server error' });
+}
+});
+
+// delete an Car by id
+
+app.delete('/api/car/:model', async (req, res) => {
+try {
+const car = await Car.deleteOne({ "model": req.params.model });
+if (!car) {
+res.status(404).json({ error: 'Car not found' });
+} else {
+res.json({ message: 'Car deleted successfully' });
+}
+} catch (error) {
+res.status(500).json({ error: 'Internal server error' });
+}
+});
 // define 404 handler
 app.use((req,res) => {
   res.status(404);
