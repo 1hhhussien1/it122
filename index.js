@@ -10,7 +10,7 @@ app.get('/', (req,res) => {
   console.log(req.url)
   Car.find({}).lean()
   .then((cars) => {
-    res.render('home', {cars})
+    res.render('home', {cars:JSON.stringify(cars)})
   })
   .catch(err => next(err));
 
