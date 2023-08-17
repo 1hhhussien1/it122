@@ -1,29 +1,43 @@
 import { Car } from "./models/Car.js";
+import React from 'react';
+import ReactDom from 'react-dom/client';
 import express from 'express';
 import { getAll, getItem } from './hw2/data.js'; 
+import cors from 'cors';
+
 const app = express();
-app.set ('port', process.env.PORT || 3000);
-app.use(express.static('pubic'));
+app.set('port', process.env.PORT || 3000);
+app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
-app.get('/', (req,res) => {
-  console.log(req.url)
-  Car.find({}).lean()
-  .then((cars) => {
-    res.render('home', {cars:JSON.stringify(cars)})
-  })
-  .catch(err => next(err));
+app.use(express.json());
+app.use('/api', cors());
 
-  
+app.get('/', (req, res, next) => {
+Car.find({}).lean()
+.then((cars) => {
+res.render('home-react', { cars: JSON.stringify(cars) })
+})
+.catch(err => next(err));
 });
-app.get('/cars/:model', (req,res) => {
-  console.log(req.url)
-  res.render('detail', {car: getItem(req.params.model)});
+
+
+app.get('/cars/:model', (req, res, next) => {
+Car.findOne({ "model": req.params.model }).lean()
+.then((car) => {
+res.render('detail', { car });
+})
+.catch(err => next(err));
+
 });
-app.get('/about', (req,res) => {
-  console.log(req.url)
-  res.send('This class is about making great web sites');
+
+app.get('/about', (req, res) => {
+console.log(req.url)
+res.send('This class is about making great web sites');
 });
+
+
+//get all cars
 app.get('/api/cars', async (req, res) => {
 try {
 const cars = await Car.find();
@@ -43,23 +57,22 @@ res.status(404).json({ error: 'Car not found' });
 res.json(car);
 }
 } catch (error) {
-
 res.status(500).json({ error: 'Internal server error' });
 }
 });
 
 // add or update a car
+
 app.post('/api/car', async (req, res) => {
 try {
 const { id, name, make, model, year } = req.body;
 if (model) {
 // update existing car
 
-const updatedCar = await Car.findByModelAndUpdate(model, { id, name, make, model, year }, { new: true });
+const updatedCar = await Car.findOneAndUpdate({ make: make }, { id, name, make, model, year }, { new: true });
 res.json(updatedCar);
 } else {
-// add new Car
-
+// handle create new car
 const newCar = new Car({ id, name, make, model, year });
 const savedCar = await newCar.save();
 res.json(savedCar);
@@ -69,7 +82,8 @@ res.status(500).json({ error: 'Internal server error' });
 }
 });
 
-// delete an Car by id
+
+// delete a Car by id
 
 app.delete('/api/car/:model', async (req, res) => {
 try {
@@ -83,13 +97,13 @@ res.json({ message: 'Car deleted successfully' });
 res.status(500).json({ error: 'Internal server error' });
 }
 });
+
 // define 404 handler
-app.use((req,res) => {
-  res.status(404);
-  res.send('404 - Not found');
-});
-app.listen(app.get('port'), () => {
-  console.log('Express started'); 
+app.use((req, res) => {
+res.status(404);
+res.send('404 - Not found');
 });
 
-      
+app.listen(app.get('port'), () => {
+console.log('Express started');
+});
