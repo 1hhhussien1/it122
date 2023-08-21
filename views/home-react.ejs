@@ -1,97 +1,158 @@
-<!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Hello World</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Car App</title>
 
-    <!-- Don't use this in production: -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="text/babel">
-   
-    const divStyle = {
-      color: 'White',
-      backgroundColor: 'Green',
-};
- 
-const cars = [
-    {"name": "Model S", "model": "Model 1"},
-    {"name": "BMW", "model": "BMW 2"},
-    {"name": "Corvette", "model": "Corvette 3"},
-    {"name": "R8", "model": "R8 4"},
-    {"name": "Mustang", "model": "Mustang 5"},
-    ];
+</style>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<!-- Don't use this in production: -->
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<h1>IT 122 Home Page</h1>
 
-const ListItems = (props) => {
-  const ListItems = props.items.map((item) =>  <li key={item.name} onClick={props.clickHandler}>{item.name}</li>);
-  return <ul>{ListItems}</ul>;
+<div id="root"></div>
+<script type="text/babel">
+
+// return a list of cars
+const Cars = (props) => {
+// props is an array
+const listItems = props.data.map((item) =>
+<li key={item._id} id={item._id} onClick={props.clickHandler}>
+{item.model}
+</li>);
+return <ul>{listItems}</ul>
+}
+
+const ItemDetail = (props) => {
+return <div>
+<hr />
+<h3>Car Details</h3>
+<form>
+<p>
+
+Name: <input type="text" name="name" value={props.item.name || ""} onChange={props.handleChange}/><br/>
+Model: <input type="text" name="model" value={props.item.model || ""} onChange={props.handleChange} /><br/>
+Year: <input type="number" name="year" value={props.item.year || ""} onChange={props.handleChange} /><br/>
+</p>
+</form>
+<button name="save" onClick={props.saveItem}>Save</button>&nbsp;
+<button name="clear" onClick={props.clearForm}>Clear</button>&nbsp;
+<button name="delete" onClick={props.deleteItem}>Delete</button>&nbsp;
+</div>
 }
 
 
-    const Detail = (props) => {
-       return (
-        <div>
-        <h3>Car Details</h3>
-        {props.item &&
-            <form>
-            <b>Name</b>: <input type="text" name="name" onChange={props.changeHandler} value={props.item.name || ''} />
-            <b>Model</b>: <input type="text" name="model" onChange={props.changeHandler} value={props.item.model ||''} />
-            </form>
-        }
-        </div>   
-        )
-    }
-   
-    //this is the parent component
-const MyApp = () => {
+const CarApp = (props) => {
+const [items, setItems] = React.useState([]);
+const [currentItem, setCurrentItem] = React.useState({});
 
-    const [items, setItems] = React.useState(cars);
-    const [selectedItem, setSelectedItem] = React.useState();
+// load data after component has rendered
+React.useEffect(() => {
+const fetchData = async () => {
+fetch("/api/cars").then(res => res.json())
+.then((json) => {
+setItems(json);
+})
+}
+fetchData()
+}, []);
 
-    const itemClicked = (e) => {
-            let found = cars.find((item) => {return item.name == e.target.innerText});
-        setSelectedItem(found);
-        }
+// list click event handler
+const selectItem = (event) => {
+const found = items.find((item) => {
+return item._id === event.target.id;
+});
+setCurrentItem(found);
+}
 
-    const itemChanged = (e) => {
-      let field = e.target.name;
-      let newItem = {...selectedItem };
-      newItem[field] = e.target.value;
+const clearForm = () => {
+setCurrentItem({});
+}
 
-      let newItems = items.filter(item => item.name != newItem.name)
-      console.log(newItems)
-      setSelectedItem(newItem);
- }
+const saveItem = () => {
+if (!currentItem.model) {
+return;
+}
+fetch("/api/car/", {
+method: "POST",
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(currentItem)
+})
+.then(res => res.json())
+.then((data) => {
+// if item has no _id, it wasn't previously saved in DB
+if (!currentItem._id) {
+currentItem._id = data._id;
+setCurrentItem(currentItem);
+// update items list
+let newItems = [...items];
+newItems.push(currentItem);
+setItems(newItems);
+}
+})
+}
 
-        
-        return (
-            <div>
-<h2>Car description!</h2>
-                <ListItems items={items} clickHandler={itemClicked}/>
-            <hr />
-                <Detail item={selectedItem} changeHandler={itemChanged} />
-                </div>
-        )
-      }
+const deleteItem = () => {
+console.log("deleting item...");
+let model = currentItem.model;
+// delete item from DB
+fetch(`/api/car/${model}`, { method: "DELETE" })
+.then(res => res.json())
+.then((data) => {
+console.log("item deleted successfully");
+// remove item from UI list
+const newItems = items.filter((item) => {
+return item.model !== model;
+});
+setItems(newItems);
+// clear form
+setCurrentItem({})
+})
+.catch((err) => {
+console.log("error deleting item: ", err.message);
+});
+};
 
-      const container = document.getElementById('root');
-      const root = ReactDOM.createRoot(container);
-      root.render(<MyApp />);
+// update list state
+const handleChange = (event) => {
+let newItem = { ...currentItem } ;
+newItem[event.target.name] = event.target.value;
+// update currentItem state
+setCurrentItem(newItem);
+// update list state
+items.find((item, index) => {
+if (item._id == newItem._id) {
+items[index] = newItem;
+setItems(items);
+}
+})
+}
 
-    </script>
-    <!--
-      Note: this page is a great way to try React but it's not suitable for production.
-      It slowly compiles JSX with Babel in the browser and uses a large development build of React.
+return (
+<div> <h2>Car Description</h2>
+<Cars data={items} clickHandler={selectItem} />
+<ItemDetail
+item={currentItem}
+handleChange={handleChange}
+clearForm={clearForm}
+saveItem={saveItem}
+deleteItem={deleteItem}
+/>
+</div>
+);
 
-      Read this page for starting a new React project with JSX:
-      https://react.dev/learn/start-a-new-react-project
+}
 
-      Read this page for adding React with JSX to an existing project:
-      https://react.dev/learn/add-react-to-an-existing-project
-    -->
-  </body>
+const container = document.getElementById('root');
+const root = ReactDOM.createRoot(container);
+root.render( <CarApp />);
+
+</script>
+</body>
 </html>
+
+
+
